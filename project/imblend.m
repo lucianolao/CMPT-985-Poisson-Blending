@@ -1,10 +1,135 @@
-function  output = imblend( source, mask, target, transparent )
+function output = imblend(source, mask, target, transparent)
 %Source, mask, and target are the same size (as long as you do not remove
 %the call to fiximages.m). You may want to use a flag for whether or not to
 %treat the source object as 'transparent' (e.g. taking the max gradient
 %rather than the source gradient).
 
-output = source .* mask + target .* ~mask;
+[imh, imw, nb] = size(source);
+
+k = 0; % k = number of variables (pixels that will blend)
+mapping = zeros(imh,imw);
+for y = 1:imh
+	for x = 1:imw
+        if mask(y,x) ~= 0
+            % mapping the different variables
+            k = k+1;
+            mapping(y,x) = k;
+        end
+	end
+end
+
+e = 1;
+b = zeros(k, nb); % 3 columns for RGB pictures
+maxNumberCoefficients = 5 * k;
+global i j v position;
+i = zeros(1,maxNumberCoefficients);
+j = zeros(1,maxNumberCoefficients);
+v = zeros(1,maxNumberCoefficients);
+position = 0;
+
+% Compute indices i, j, v for matrix A, as well as the vector b
+for y = 1:imh
+    for x = 1:imw
+        if (mapping(y,x) ~= 0)
+            for ch = 1:nb
+                boundary_t = 0;
+                if (x ~= 1) && (x ~= imw) && (y ~= 1) && (y ~= imh)
+                    % derivative on both axis
+                    boundary_t = assignIJV(e, mapping(y,x), 4, target(y,x,ch), boundary_t, ch);
+                    boundary_t = assignIJV(e, mapping(y,x+1), -1, target(y,x+1,ch), boundary_t, ch);
+                    boundary_t = assignIJV(e, mapping(y,x-1), -1, target(y,x-1,ch), boundary_t, ch);
+                    boundary_t = assignIJV(e, mapping(y+1,x), -1, target(y+1,x,ch), boundary_t, ch);
+                    boundary_t = assignIJV(e, mapping(y-1,x), -1, target(y-1,x,ch), boundary_t, ch);
+                    if transparent
+                        b(e,ch) = 4*max(source(y,x,ch),target(y,x,ch)) - max(source(y,x+1,ch),target(y,x+1,ch)) - max(source(y,x-1,ch),target(y,x-1,ch)) - max(source(y+1,x,ch),target(y+1,x,ch)) - max(source(y-1,x,ch),target(y-1,x,ch));
+                    else
+                        b(e,ch) = 4*source(y,x,ch) - source(y,x+1,ch) - source(y,x-1,ch) - source(y+1,x,ch) - source(y-1,x,ch);
+                    end
+                    b(e,ch) = b(e,ch) + boundary_t;
+                elseif (x ~= 1) && (x ~= imw)
+                    % derivative on x
+                    boundary_t = assignIJV(e, mapping(y,x), 2, target(y,x,ch), boundary_t, ch);
+                    boundary_t = assignIJV(e, mapping(y,x+1), -1, target(y,x+1,ch), boundary_t, ch);
+                    boundary_t = assignIJV(e, mapping(y,x-1), -1, target(y,x-1,ch), boundary_t, ch);
+                    if transparent
+                        b(e,ch) = 2*max(source(y,x,ch),target(y,x,ch)) - max(source(y,x+1,ch),target(y,x+1,ch)) - max(source(y,x-1,ch),target(y,x-1,ch));
+                    else
+                        b(e,ch) = 2*source(y,x,ch) - source(y,x+1,ch) - source(y,x-1,ch);
+                    end
+                    b(e,ch) = b(e,ch) + boundary_t;
+                elseif (y ~= 1) && (y ~= imh)
+                    % derivative on y
+                    boundary_t = assignIJV(e, mapping(y,x), 2, target(y,x,ch), boundary_t, ch);
+                    boundary_t = assignIJV(e, mapping(y+1,x), -1, target(y+1,x,ch), boundary_t, ch);
+                    boundary_t = assignIJV(e, mapping(y-1,x), -1, target(y-1,x,ch), boundary_t, ch);
+                    if transparent
+                        b(e,ch) = 2*max(source(y,x,ch),target(y,x,ch)) - max(source(y+1,x,ch),target(y+1,x,ch)) - max(source(y-1,x,ch),target(y-1,x,ch));
+                    else
+                        b(e,ch) = 2*source(y,x,ch) - source(y+1,x,ch) - source(y-1,x,ch);
+                    end
+                    b(e,ch) = b(e,ch) + boundary_t;
+                else
+                    % corner
+                    % adding 1 equation so matrix A still size K,K
+                    boundary_t = assignIJV(e, mapping(y,x), 1, target(y,x,ch), boundary_t, ch);
+                    b(e,ch) = source(y,x,ch) + boundary_t;
+                end
+            end % end loop for channels
+            e = e+1;
+        end % end if of mask ~= 0
+    end
+end
+
+
+% Create matrix A from the indices
+i = i(1:position);
+j = j(1:position);
+v = v(1:position);
+A = sparse(i,j,v);
+
+% Solve A\b, and copy new pixels to their respective coordinates
+output = zeros(imh, imw, nb);
+for ch = 1:nb
+    solution = A\b(:,ch);
+    % error = sum(abs(A*solution-b(:,ch)));
+    % disp(error);
+    for y = 1:imh
+        for x = 1:imw
+            if (mapping(y,x) ~= 0)
+                output(y,x,ch) = solution(mapping(y,x));
+                % output(y,x,ch) = solution(ch,mapping(y,x));
+            else
+                % mask == 0, just copy pixels from target image
+                output(y,x,ch) = target(y,x,ch);
+            end
+        end
+    end
+end    
+
+%output = source .* mask + target .* ~mask;
+
+end % end of function
+
+
+% Function to keep track of the indices for matrix A
+function [boundary_t] = assignIJV(row, mapping, value, target_pixel, b, channel)
+    global i j v position;
+    if (mapping ~= 0)
+        if (channel == 1) % otherwise it doesnt need to create matrix A again
+            position = position + 1;
+            i(position) = row;
+            j(position) = mapping;
+            v(position) = value;
+        end
+        boundary_t = b;
+    else
+        % mask == 0, get values from the target image
+        boundary_t = b + target_pixel;
+    end
+end
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % As explained on the web page, we solve for output by setting up a large
