@@ -41,7 +41,26 @@ for y = 1:imh
                     boundary_t = assignIJV(e, mapping(y+1,x), -1, target(y+1,x,ch), boundary_t, ch);
                     boundary_t = assignIJV(e, mapping(y-1,x), -1, target(y-1,x,ch), boundary_t, ch);
                     if transparent
-                        b(e,ch) = 4*max(source(y,x,ch),target(y,x,ch)) - max(source(y,x+1,ch),target(y,x+1,ch)) - max(source(y,x-1,ch),target(y,x-1,ch)) - max(source(y+1,x,ch),target(y+1,x,ch)) - max(source(y-1,x,ch),target(y-1,x,ch));
+                        if abs(source(y,x,ch)-source(y,x+1,ch)) > abs(target(y,x,ch)-target(y,x+1,ch))
+                            b(e,ch) = b(e,ch) + source(y,x,ch) - source(y,x+1,ch);
+                        else
+                            b(e,ch) = b(e,ch) + target(y,x,ch) - target(y,x+1,ch);
+                        end
+                        if abs(source(y,x,ch)-source(y,x-1,ch)) > abs(target(y,x,ch)-target(y,x-1,ch))
+                            b(e,ch) = b(e,ch) + source(y,x,ch) - source(y,x-1,ch);
+                        else
+                            b(e,ch) = b(e,ch) + target(y,x,ch) - target(y,x-1,ch);
+                        end
+                        if abs(source(y,x,ch)-source(y+1,x,ch)) > abs(target(y,x,ch)-target(y+1,x,ch))
+                            b(e,ch) = b(e,ch) + source(y,x,ch) - source(y+1,x,ch);
+                        else
+                            b(e,ch) = b(e,ch) + target(y,x,ch) - target(y+1,x,ch);
+                        end
+                        if abs(source(y,x,ch)-source(y-1,x,ch)) > abs(target(y,x,ch)-target(y-1,x,ch))
+                            b(e,ch) = b(e,ch) + source(y,x,ch) - source(y-1,x,ch);
+                        else
+                            b(e,ch) = b(e,ch) + target(y,x,ch) - target(y-1,x,ch);
+                        end
                     else
                         b(e,ch) = 4*source(y,x,ch) - source(y,x+1,ch) - source(y,x-1,ch) - source(y+1,x,ch) - source(y-1,x,ch);
                     end
@@ -52,7 +71,16 @@ for y = 1:imh
                     boundary_t = assignIJV(e, mapping(y,x+1), -1, target(y,x+1,ch), boundary_t, ch);
                     boundary_t = assignIJV(e, mapping(y,x-1), -1, target(y,x-1,ch), boundary_t, ch);
                     if transparent
-                        b(e,ch) = 2*max(source(y,x,ch),target(y,x,ch)) - max(source(y,x+1,ch),target(y,x+1,ch)) - max(source(y,x-1,ch),target(y,x-1,ch));
+                        if abs(source(y,x,ch)-source(y,x+1,ch)) > abs(target(y,x,ch)-target(y,x+1,ch))
+                            b(e,ch) = b(e,ch) + source(y,x,ch) - source(y,x+1,ch);
+                        else
+                            b(e,ch) = b(e,ch) + target(y,x,ch) - target(y,x+1,ch);
+                        end
+                        if abs(source(y,x,ch)-source(y,x-1,ch)) > abs(target(y,x,ch)-target(y,x-1,ch))
+                            b(e,ch) = b(e,ch) + source(y,x,ch) - source(y,x-1,ch);
+                        else
+                            b(e,ch) = b(e,ch) + target(y,x,ch) - target(y,x-1,ch);
+                        end
                     else
                         b(e,ch) = 2*source(y,x,ch) - source(y,x+1,ch) - source(y,x-1,ch);
                     end
@@ -63,7 +91,16 @@ for y = 1:imh
                     boundary_t = assignIJV(e, mapping(y+1,x), -1, target(y+1,x,ch), boundary_t, ch);
                     boundary_t = assignIJV(e, mapping(y-1,x), -1, target(y-1,x,ch), boundary_t, ch);
                     if transparent
-                        b(e,ch) = 2*max(source(y,x,ch),target(y,x,ch)) - max(source(y+1,x,ch),target(y+1,x,ch)) - max(source(y-1,x,ch),target(y-1,x,ch));
+                        if abs(source(y,x,ch)-source(y+1,x,ch)) > abs(target(y,x,ch)-target(y+1,x,ch))
+                            b(e,ch) = b(e,ch) + source(y,x,ch) - source(y+1,x,ch);
+                        else
+                            b(e,ch) = b(e,ch) + target(y,x,ch) - target(y+1,x,ch);
+                        end
+                        if abs(source(y,x,ch)-source(y-1,x,ch)) > abs(target(y,x,ch)-target(y-1,x,ch))
+                            b(e,ch) = b(e,ch) + source(y,x,ch) - source(y-1,x,ch);
+                        else
+                            b(e,ch) = b(e,ch) + target(y,x,ch) - target(y-1,x,ch);
+                        end
                     else
                         b(e,ch) = 2*source(y,x,ch) - source(y+1,x,ch) - source(y-1,x,ch);
                     end
